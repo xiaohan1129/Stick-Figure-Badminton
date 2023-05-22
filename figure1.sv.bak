@@ -1,0 +1,211 @@
+/*
+ * ECE385-HelperTools/PNG-To-Txt
+ * Author: Rishi Thakkar
+ *
+ */
+
+module figure1(
+	input Clk,                // 50 MHz clock
+         Reset,              // Active-high reset signal
+         frame_clk,          // The clock indicating a new frame (~60Hz)
+	//input logic   figure1_exist,
+	input [7:0]   keycode,
+   input [9:0]   DrawX, DrawY,       // Current pixel coordinates
+	
+	//input logic [9:0] DrawX, DrawY,
+	//input logic [9:0] figure1_x,
+	//input logic [9:0] figure1_y,
+	//input logic [5:0] figure1_state,
+	output logic [2:0] figure1_data,
+   output logic  is_figure1             // Whether current pixel belongs to figure1 or background
+);
+		
+	
+	// screen size
+	parameter [9:0] SCREEN_WIDTH =  10'd480;
+   parameter [9:0] SCREEN_LENGTH = 10'd640;
+	parameter [9:0] FIGURE1_WIDTH =  10'd120;
+	parameter [9:0] FIGURE1_LENGTH =  10'd120;
+	
+	//--------------------load memory-----------------//
+	logic [18:0] read_address;
+//	logic [9:0] CenterX;		// saber center in the collection graph
+//	logic [9:0] CenterY;
+//	logic [9:0] CornerX;		// the frame left up corner
+//	logic [9:0] CornerY;
+//	logic [9:0] FrameX;		// the frame size
+//	logic [9:0] FrameY;
+//	logic [5:0] state;
+	figure1_RAM figure1_RAM(.*);
+	
+	parameter [9:0] figure1_X_Start = 10'd160;  // Start X position
+   parameter [9:0] figure1_Y_Start = 10'd320;  // Start Y position
+	// motion range
+   parameter [9:0] figure1_X_Min = 10'd0;       // Leftmost point on the X axis
+   parameter [9:0] figure1_X_Max = 10'd320;     // Rightmost point on the X axis	
+   parameter [9:0] figure1_Y_Min = 10'd80;       // Topmost point on the Y axis
+   parameter [9:0] figure1_Y_Max = 10'd380;     // Bottommost point on the Y axis
+	// motion step
+   parameter [9:0] figure1_X_Step = 10'd1;      // Step size on the X axis
+   parameter [9:0] figure1_Y_Step = 10'd1;      // Step size on the Y axis
+	
+	parameter [9:0] figure1_X_Center = 10'd69;      // Center position
+   parameter [9:0] figure1_Y_Center = 10'd60;
+	parameter [9:0] figure1_X_Corner = 10'd0;      // left up corner
+   parameter [9:0] figure1_Y_Corner = 10'd0; 
+	parameter [9:0] figure1_X_Frame = 10'd120;      // the frame size
+   parameter [9:0] figure1_Y_Frame = 10'd120;      
+	
+    logic [9:0] figure1_X_Pos, figure1_X_Motion, figure1_Y_Pos, figure1_Y_Motion;
+    logic [9:0] figure1_X_Pos_in, figure1_X_Motion_in, figure1_Y_Pos_in, figure1_Y_Motion_in;
+//	 logic [7:0] W = 8'h1A;
+//    logic [7:0] A = 8'h04;
+//    logic [7:0] S = 8'h16;
+//    logic [7:0] D = 8'h07;
+	
+//	always_comb begin
+//		read_address = 19'b0;
+//		is_figure1 = 0;
+
+//////// Do not modify the always_ff blocks. ////////
+    // Detect rising edge of frame_clk
+    logic frame_clk_delayed, frame_clk_rising_edge;
+    always_ff @ (posedge Clk) begin
+        frame_clk_delayed <= frame_clk;
+        frame_clk_rising_edge <= (frame_clk == 1'b1) && (frame_clk_delayed == 1'b0);
+    end
+    // Update registers
+    always_ff @ (posedge Clk)
+    begin
+        if (Reset) // back to original place and don't move
+        begin
+            figure1_X_Pos <= figure1_X_Start;
+            figure1_Y_Pos <= figure1_Y_Start;
+            figure1_X_Motion <= 10'd0;
+            figure1_Y_Motion <= 10'd0;
+        end
+        else
+        begin
+            figure1_X_Pos <= figure1_X_Pos_in;
+            figure1_Y_Pos <= figure1_Y_Pos_in;
+            figure1_X_Motion <= figure1_X_Motion_in;
+            figure1_Y_Motion <= figure1_Y_Motion_in;
+        end
+    end
+    //////// Do not modify the always_ff blocks. ////////
+    
+    // You need to modify always_comb block.	 
+	 
+	 always_comb
+    begin
+        // By default, keep motion and position unchanged
+        figure1_X_Pos_in = figure1_X_Pos;
+        figure1_Y_Pos_in = figure1_Y_Pos;
+        figure1_X_Motion_in = figure1_X_Motion;
+        figure1_Y_Motion_in = figure1_Y_Motion;
+		  
+		  
+        
+        // Update position and motion only at rising edge of frame clock
+        if (frame_clk_rising_edge)
+        begin
+            // Be careful when using comparators with "logic" datatype because compiler treats 
+            //   both sides of the operator as UNSIGNED numbers.
+            // e.g. figure1_Y_Pos - figure1_Size <= figure1_Y_Min 
+            // If figure1_Y_Pos is 0, then figure1_Y_Pos - figure1_Size will not be -4, but rather a large positive number.
+			 unique case(keycode)
+			 8'h04: // A Go left
+				begin
+				 figure1_X_Motion_in = (~(figure1_X_Step) + 1'b1);
+				 figure1_Y_Motion_in = 10'h000;
+				end 
+			 8'h07: // D Go right
+				begin
+				 figure1_X_Motion_in = figure1_X_Step;
+				 figure1_Y_Motion_in = 10'h000;
+				end
+			 8'h1a: // W Jump not use now
+				begin
+				 figure1_Y_Motion_in = 10'h000;  //(~(figure1_Y_Step) + 1'b1);
+				 figure1_X_Motion_in = 10'h000;
+				end
+			 8'h16: // S Bat not use now
+				begin
+				 figure1_Y_Motion_in = 10'h000;
+				 figure1_X_Motion_in = 10'h000;
+				end
+			 default:
+				begin 
+				end
+			 
+			 endcase
+
+			// if at edge,  figure cannot move
+         if( figure1_X_Pos + (figure1_X_Frame-figure1_X_Center) >= figure1_X_Max )  // figure1 is at the bottom edge, BOUNCE!
+				begin
+              figure1_X_Motion_in = 10'h000;  
+              figure1_Y_Motion_in = 10'h000; 
+				end
+
+         else if ( figure1_X_Pos <= figure1_X_Min + figure1_X_Center )  // figure1 is at the top edge, BOUNCE!
+				begin
+              figure1_X_Motion_in = 10'h000;
+              figure1_Y_Motion_in = 10'h000; 
+				end 
+
+        
+            // Update the figure1's position with its motion
+            figure1_X_Pos_in = figure1_X_Pos + figure1_X_Motion;
+            figure1_Y_Pos_in = figure1_Y_Pos + figure1_Y_Motion;
+        end
+    end
+    
+    // Compute whether the pixel corresponds to figure1 or background
+    /* Since the multiplicants are required to be signed, we have to first cast them
+       from logic to int (signed by default) before they are multiplied. */
+	assign figure1_x = figure1_X_Pos;
+	assign figure1_y = figure1_Y_Pos;
+	assign CenterX = figure1_X_Center;
+	assign CenterY = figure1_Y_Center;
+	assign CornerX = figure1_X_Corner;
+	assign CornerY = figure1_Y_Corner;
+	assign FrameX = figure1_X_Frame;
+	assign FrameY = figure1_Y_Frame;
+
+    always_comb begin
+		if (DrawX >= figure1_x - (CenterX-CornerX) && DrawX <= figure1_x + (CornerX+FrameX-CenterX) &&
+			 DrawY >= figure1_y - (CenterY-CornerY) && DrawY <= figure1_y + (CornerY+FrameY-CenterY))begin
+				is_figure1 = 1'b1;
+				read_address = CenterX-(figure1_x - DrawX) + (CenterY-(figure1_y - DrawY))*FIGURE1_LENGTH;
+		 end
+		 else begin
+				is_figure1 = 1'b0;
+				read_address = 19'b0;
+		 end
+     end
+    
+endmodule
+		
+	
+	
+module figure1_RAM(	
+	
+	input [18:0] read_address, //write_address, 
+	input Clk,
+	
+	output logic [2:0] figure1_data
+);
+
+// mem has width of n bits and a total of xxx addresses
+logic [2:0] mem [0:14399]; // 120x120 = 14400
+initial
+begin
+	 $readmemh("figure1.txt", mem);// read into mem
+end
+
+
+always_ff @ (posedge Clk) begin
+	figure1_data<= mem[read_address];// get data accroding to read_address computed above
+end
+
+endmodule

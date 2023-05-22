@@ -1,0 +1,179 @@
+module figure1FSM(input      Clk,                // 50 MHz clock
+                             Reset,              // Active-high reset signal
+                             frame_clk,          // The clock indicating a new frame (~60Hz)
+					 input [7:0]   keycode,
+					 output	[5:0] figure1_state);
+					 
+	 //logic frame_clk_delayed, frame_clk_rising_edge;
+	 logic [5:0] counter,inner_counter;
+	 logic set_zero;
+	 
+	 
+	 enum logic [4:0] { S1, S2, S3, S4, S5, S6, S7,
+	                    W, H1, H2, H3, H4, H5, 
+							  SR1, SR2, SR3, SL1, SL2, SL3,
+							  MR1, MR2, MR3, ML1, ML2, ML3} State, Next_state;   // Internal state logic
+	 
+	always_ff @ (posedge frame_clk) 
+	begin
+		counter<=inner_counter;
+		if(set_zero)
+		counter<=6'b0;
+	end 
+		
+	always_comb
+	begin
+		inner_counter=counter+1;
+	end
+	 
+	always_ff @ (posedge Clk)
+	begin
+		if (Reset) 
+			State <= S1;
+		else 
+			State <= Next_state;
+	end
+
+//	always_ff @ (posedge Clk) begin
+//		frame_clk_delayed <= frame_clk;
+//		frame_clk_rising_edge <= (frame_clk == 1'b1) && (frame_clk_delayed == 1'b0);
+//   end 
+//	always_comb
+//	begin 	 
+
+	always_ff @ (posedge frame_clk)
+	begin 	 
+		set_zero=1'b0;
+		// Default next state is staying at current state
+		Next_state = State;
+		//count_in =  count;
+		unique case (State)
+			S1 : 
+				case(keycode)
+					8'h04: // A: Go left
+						Next_state = SL1;
+					8'h07: // D: Go right
+						Next_state = SR1;
+					8'h16: // S: Hit
+						Next_state = S2;						
+					default : 
+						Next_state = S1;
+				endcase
+			S2 :
+				Next_state = S3;						
+			S3 :
+				Next_state = S4;
+			S4 :
+				Next_state = S5;
+			S5 :
+				Next_state = S6;
+			S6 :
+				Next_state = S7;
+			S7 :
+				Next_state = W;
+			W :
+				case(keycode)
+					8'h04: // A: Go left
+						Next_state = ML1;
+					8'h07: // D: Go right
+						Next_state = MR1;
+					8'h16: // S: Hit
+						Next_state = H1;
+					default : 
+						Next_state = W;
+				endcase
+			H1 :
+				Next_state = H2;
+			H2 :
+				Next_state = H3;
+			H3 :
+				Next_state = H4;
+			H4 :
+				Next_state = H5;
+			H5 :
+				Next_state = W;
+			SR1 :
+				Next_state = SR2;
+			SR2 :
+				Next_state = SR3;
+			SR3 :
+				Next_state = S1;
+			SL1 :
+				Next_state = SL2;		
+			SL2 :
+				Next_state = SL3;
+			SL3 :
+				Next_state = S1;
+			MR1 :
+				Next_state = MR2;
+			MR2 :
+				Next_state = MR3;
+			MR3 :
+				Next_state = W;
+			ML1 :
+				Next_state = ML2;
+			ML2 :
+				Next_state = ML3;
+			ML3 :
+				Next_state = W;
+			default : 
+				Next_state = State; 
+		endcase
+	
+	
+		// Assign control signals based on current state
+		case (State)
+			S1 : 
+				figure1_state = 10'd0;
+			S2 :
+				figure1_state = 10'd1;
+			S3 :
+				figure1_state = 10'd2;
+			S4 :
+				figure1_state = 10'd3;
+			S5 :
+				figure1_state = 10'd4;
+			S6 :
+				figure1_state = 10'd5;
+			S7 :
+				figure1_state = 10'd6;
+			W :
+				figure1_state = 10'd7;
+			H1 :
+				figure1_state = 10'd8;
+			H2 :
+				figure1_state = 10'd9;
+			H3 :
+				figure1_state = 10'd10;
+			H4 :
+				figure1_state = 10'd9;
+			H5 :
+				figure1_state = 10'd8;
+			SR1 :
+				figure1_state = 10'd14;
+			SR2 :
+				figure1_state = 10'd16;
+			SR3 :
+				figure1_state = 10'd15;
+			SL1 :
+				figure1_state = 10'd15;
+			SL2 :
+				figure1_state = 10'd16;
+			SL3 :
+				figure1_state = 10'd14;
+			MR1 :
+				figure1_state = 10'd11;
+			MR2 :
+				figure1_state = 10'd12;
+			MR3 :
+				figure1_state = 10'd13;
+			ML1 :
+				figure1_state = 10'd13;
+			ML2 :
+				figure1_state = 10'd12;
+			ML3 :
+				figure1_state = 10'd11;
+			default : ; 
+		endcase
+	end 
+endmodule

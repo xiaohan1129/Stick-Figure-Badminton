@@ -1,0 +1,126 @@
+/*
+ * ECE385-HelperTools/PNG-To-Txt
+ * Author: Rishi Thakkar
+ *
+ */
+
+module figure1(
+	input Clk,                // 50 MHz clock
+         //Reset,              // Active-high reset signal
+         //frame_clk,          // The clock indicating a new frame (~60Hz)
+	//input logic   figure1_exist,
+	//input [7:0]   keycode,
+   //input [9:0]   DrawX, DrawY,       // Current pixel coordinates
+	
+	input logic [9:0] DrawX, DrawY,
+	input logic [9:0] figure1_x,
+	input logic [9:0] figure1_y,
+	input logic [5:0] figure1_state,
+	output logic [2:0] figure1_data,
+   output logic  is_figure1             // Whether current pixel belongs to figure1 or background
+);
+		
+	// screen size
+	parameter [9:0] SCREEN_WIDTH =  10'd480;	// Y
+   parameter [9:0] SCREEN_LENGTH = 10'd640;	// X
+	parameter [9:0] FIGURE1_WIDTH =  10'd424;	// Y
+	parameter [9:0] FIGURE1_LENGTH =  10'd502;// X
+	
+	//--------------------load memory-----------------//
+	logic [18:0] read_address;
+	logic [9:0] CenterX;		// figure1 center in the collection graph
+	logic [9:0] CenterY;
+	logic [9:0] CornerX;		// the frame left up corner
+	logic [9:0] CornerY;
+	logic [9:0] FrameX;		// the frame size
+	logic [9:0] FrameY;
+	logic [5:0] state;
+	figure1_RAM figure1_RAM(.*);
+	
+		// use state as index to find the center of saber
+	logic [9:0] figure1StateCenterX[0:16];
+	logic [9:0] figure1StateCenterY[0:16];
+	logic [9:0] figure1StateCornerX[0:16];
+	logic [9:0] figure1StateCornerY[0:16];
+	logic [9:0] figure1StateFrameX[0:16];
+	logic [9:0] figure1StateFrameY[0:16];
+	
+	assign figure1StateCenterX = '{10'd69,10'd155 ,10'd219 ,10'd278 ,10'd343 ,
+										  10'd21  ,10'd123 ,10'd222 ,10'd270 ,10'd320 ,
+										  10'd412 ,10'd69  ,10'd162 ,10'd259 ,10'd463 ,
+										  10'd352 ,10'd465};//TODO
+           
+	assign figure1StateCenterY = '{10'd22,10'd22  ,10'd21  ,10'd21  ,10'd21  ,
+										  10'd198 ,10'd198 ,10'd198 ,10'd198 ,10'd198 ,
+										  10'd198 ,10'd332 ,10'd332 ,10'd333 ,10'd72 ,
+										  10'd334 ,10'd334};//TODO
+	
+	assign figure1StateCornerX = '{10'd0 ,10'd106 ,10'd194 ,10'd257 ,10'd321 ,
+										  10'd0   ,10'd103 ,10'd151 ,10'd248 ,10'd299 ,
+										  10'd387 ,10'd0   ,10'd92  ,10'd188 ,10'd394 ,
+										  10'd286 ,10'd396};//TODO
+
+	assign figure1StateCornerY = '{10'd0 ,10'd0   ,10'd0   ,10'd0   ,10'd0   ,
+										  10'd160 ,10'd107 ,10'd145 ,10'd122 ,10'd142 ,
+										  10'd172 ,10'd283 ,10'd283 ,10'd283 ,10'd49  ,
+										  10'd306 ,10'd311};//TODO
+										
+	assign figure1StateFrameX = '{10'd106,10'd88  ,10'd63  ,10'd64  ,10'd112 ,
+										 10'd103  ,10'd48  ,10'd97  ,10'd51  ,10'd85  ,
+										 10'd115  ,10'd92  ,10'd68  ,10'd98  ,10'd108 ,
+										 10'd101  ,10'd106};//TODO
+									
+	assign figure1StateFrameY = '{10'd108,10'd107 ,10'd114 ,10'd114 ,10'd106 ,
+										 10'd123  ,10'd176 ,10'd138 ,10'd161 ,10'd141 ,
+										 10'd111  ,10'd137 ,10'd137 ,10'd138 ,10'd107 ,
+										 10'd116  ,10'd110};//TODO
+										 
+										
+	assign CenterX = figure1StateCenterX[state];	// Center position
+	assign CenterY = figure1StateCenterY[state];
+	assign CornerX = figure1StateCornerX[state];	// left up corner
+	assign CornerY = figure1StateCornerY[state];
+	assign FrameX = figure1StateFrameX[state];	// the frame size
+	assign FrameY = figure1StateFrameY[state];
+
+
+	// Compute whether the pixel corresponds to figure1 or background
+    /* Since the multiplicants are required to be signed, we have to first cast them
+       from logic to int (signed by default) before they are multiplied. */
+	always_comb begin
+		state = figure1_state;
+		read_address = 19'b0;
+		is_figure1 = 1'b0;
+		if ((DrawX >= figure1_x - (CenterX-CornerX) || figure1_x < (CenterX-CornerX)) && DrawX <= figure1_x + (CornerX+FrameX-CenterX) &&
+			 (DrawY >= figure1_y - (CenterY-CornerY) || figure1_y < (CenterY-CornerY)) && DrawY <= figure1_y + (CornerY+FrameY-CenterY))begin
+				is_figure1 = 1'b1;
+				read_address = CenterX-(figure1_x - DrawX) + (CenterY-(figure1_y - DrawY))*FIGURE1_LENGTH;
+				//             x position in figure1          y position in figure1
+		 end
+     end
+    
+endmodule
+
+
+	
+module figure1_RAM(	
+	
+	input [18:0] read_address, //write_address, 
+	input Clk,
+	
+	output logic [2:0] figure1_data
+);
+
+// mem has width of n bits and a total of xxx addresses
+logic [2:0] mem [0:212847]; // 424x502 = 212848
+initial
+begin
+	 $readmemh("figure1.txt", mem);// read into mem
+end
+
+
+always_ff @ (posedge Clk) begin
+	figure1_data<= mem[read_address];// get data accroding to read_address computed above
+end
+
+endmodule
