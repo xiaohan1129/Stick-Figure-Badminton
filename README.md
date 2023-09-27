@@ -1,5 +1,5 @@
 # Stick Figure Badminton
-UIUC 21FA ECE385 final project, the whole project is done by myself. 
+UIUC 21FA ECE385 final project, the whole project was done by myself. 
 
 Some software files are missing, but you can simply modify the code from lab, I didn't done many modification for software part.
 
